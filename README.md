@@ -114,8 +114,8 @@ go install github.com/wailsapp/wails/v2/cmd/wails@latest
 wails doctor
 
 # 3. 克隆仓库
-git clone https://github.com/Hellucigen/Charon-Personal-Terminal-of-Hellucigen.git
-cd Charon-Personal-Terminal-of-Hellucigen
+git clone https://github.com/Hellucigen/Charon.git
+cd Charon
 
 # 4. 安装前端依赖
 cd frontend && npm install && cd ..
