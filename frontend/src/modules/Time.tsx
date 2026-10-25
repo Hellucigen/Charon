@@ -12,7 +12,7 @@ export const Time: React.FC = () => {
   const [tab, setTab] = useState<'pomo' | 'blocks' | 'usage'>('pomo')
   return (
     <div className="p-6 space-y-4 max-w-4xl">
-      <GlassPanel title="TIME · 时间追踪" subtitle="番茄钟 · Time Blocking · 前台应用统计（RescueTime 风格）" />
+      <GlassPanel title="TIME · 时间追踪" />
       <div className="flex items-center gap-1">
         {(['pomo', 'blocks', 'usage'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}

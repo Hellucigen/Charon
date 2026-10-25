@@ -54,6 +54,10 @@ export function TopK() {
   return window['go']['modules']['FascinatorService']['TopK']();
 }
 
+export function TryAdopt() {
+  return window['go']['modules']['FascinatorService']['TryAdopt']();
+}
+
 export function WriteConfig(arg1) {
   return window['go']['modules']['FascinatorService']['WriteConfig'](arg1);
 }

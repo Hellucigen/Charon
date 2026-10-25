@@ -52,7 +52,7 @@ export const Fleeting: React.FC = () => {
     <div className="p-6 space-y-4">
       <GlassPanel
         title="FLEETING · 零碎想法"
-        subtitle="按 ⌃⌥N 唤起捕获面板 · 自动时间戳 · 后续可升级为正式笔记"
+
         meta={<span className="pt-mono text-xs text-text-lo">{items.length} 条</span>}
         scanline
         actions={

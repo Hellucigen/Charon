@@ -67,7 +67,7 @@ export const Travel: React.FC = () => {
 
   return (
     <div className="p-6 space-y-4">
-      <GlassPanel title="TRAVEL · 旅游日记" subtitle={`${trips.length} 次行程 · 时间轴 + 坐标小地图 · 消费自动入账 Finance`} />
+      <GlassPanel title="TRAVEL · 旅游日记" subtitle={`${trips.length} 次行程`} />
 
       <div className="grid grid-cols-[260px_1fr] gap-3">
         {/* trips sidebar */}

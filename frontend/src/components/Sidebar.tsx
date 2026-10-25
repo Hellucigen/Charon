@@ -64,8 +64,8 @@ export default function Sidebar() {
                       className={clsx(
                         "group w-full h-9 px-3 flex items-center gap-3 rounded-soft transition-colors relative",
                         isActive
-                          ? "text-text-hi bg-[#fff5ee]"
-                          : "text-text-mid hover:text-text-hi hover:bg-[#f0f0f0]"
+                          ? "text-text-hi bg-[rgb(var(--pt-accent)/0.08)]"
+                          : "text-text-mid hover:text-text-hi hover:bg-[rgb(var(--pt-edge)/0.05)]"
                       )}
                       title={sidebarCollapsed ? m.label : undefined}
                     >
@@ -118,7 +118,7 @@ export default function Sidebar() {
                             onClick={() => setActive(plugin.id)}
                             className={clsx(
                                 "group w-full h-9 px-3 flex items-center gap-3 rounded-soft transition-colors relative",
-                                isActive ? "text-text-hi bg-[#fff5ee]" : "text-text-mid hover:text-text-hi hover:bg-[#f0f0f0]"
+                                isActive ? "text-text-hi bg-[rgb(var(--pt-accent)/0.08)]" : "text-text-mid hover:text-text-hi hover:bg-[rgb(var(--pt-edge)/0.05)]"
                             )}
                             title={sidebarCollapsed ? plugin.name : undefined}
                         >

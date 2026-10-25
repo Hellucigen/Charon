@@ -52,7 +52,7 @@ export const Health: React.FC = () => {
 
   return (
     <div className="p-6 space-y-4 max-w-5xl">
-      <GlassPanel title="HEALTH · 健康追踪" subtitle="体重 / 睡眠 / 习惯 · 连续打卡 · 趋势曲线" />
+      <GlassPanel title="HEALTH · 健康追踪" />
 
       {/* quick log */}
       <div className="border border-edge p-3">

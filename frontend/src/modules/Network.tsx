@@ -10,7 +10,7 @@ export const Network: React.FC = () => {
   const [tab, setTab] = useState<'net' | 'http' | 'encode' | 'regex'>('net')
   return (
     <div className="p-6 space-y-4 max-w-5xl">
-      <GlassPanel title="NETWORK · 网络工具箱" subtitle="IP / DNS / Ping · Mini-Postman · 编码转换 · 正则测试" />
+      <GlassPanel title="NETWORK · 网络工具箱" />
       <div className="flex items-center gap-1">
         {(['net', 'http', 'encode', 'regex'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}

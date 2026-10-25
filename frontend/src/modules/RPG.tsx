@@ -68,7 +68,7 @@ export const RPG: React.FC = () => {
     <div className="p-6 space-y-4 max-w-5xl">
       <GlassPanel
         title="RPG · 人生游戏"
-        subtitle={`Lv.${level} ${profile?.title ?? ''} · 完成待办/复习/番茄/写作自动获得 XP`}
+        subtitle={`Lv.${level} ${profile?.title ?? ''}`}
         meta={<button className="pt-btn pt-btn-ghost text-xs" onClick={check}><Sparkles size={12} /> 检查成就</button>}
       >
         <div className="grid grid-cols-[1fr_260px] gap-4 mt-3">

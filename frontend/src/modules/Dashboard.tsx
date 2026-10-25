@@ -36,11 +36,6 @@ export default function Dashboard() {
             <h1 className="pt-h1 mb-1">
               {greeting()}, operator<span className="pt-cursor" />
             </h1>
-            <div className="text-text-mid text-[14px] max-w-[60ch]">
-              Personal Terminal · 一个本地优先的「人生操作系统」。
-              所有数据在 <span className="pt-mono text-text-hi">~/.personal-terminal</span> 落盘,
-              核心模块互通,可装插件。
-            </div>
           </div>
           <pre
             className="pt-ascii hidden md:block text-right opacity-70"

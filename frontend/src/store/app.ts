@@ -3,6 +3,7 @@ import { create } from "zustand";
 export type ModuleID =
   | "dashboard"
   | "fascinator"
+  | "companion"
   | "notes"
   | "fleeting"
   | "todo"

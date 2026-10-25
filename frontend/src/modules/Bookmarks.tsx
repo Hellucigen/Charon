@@ -84,7 +84,7 @@ export const Bookmarks: React.FC = () => {
       <div className="flex-1 min-w-0 space-y-3">
         <GlassPanel
           title="BOOKMARKS"
-          subtitle="网页书签 · 文件夹层级 · 离线快照（Chromedp 渲染）"
+
           meta={<span className="pt-mono text-xs text-text-lo">{filtered.length} 项 · {folder || '根目录'}</span>}
           actions={
             <div className="flex items-center gap-2">

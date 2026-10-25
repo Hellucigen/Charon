@@ -41,6 +41,11 @@ func main() {
 	rpgSvc := modules.NewRPGService()
 	dataSvc := modules.NewDataService()
 	diarySvc := modules.NewDiaryService()
+	janitorSvc := modules.NewJanitorService()
+	academicSvc := modules.NewAcademicService()
+	gameSvc := modules.NewGameService()
+	papersSvc := modules.NewPapersService()
+	toolkitSvc := modules.NewToolkitService()
 
 	app := NewApp(fascinatorSvc)
 
@@ -79,6 +84,11 @@ func main() {
 			rpgSvc,
 			dataSvc,
 			diarySvc,
+			janitorSvc,
+			academicSvc,
+			gameSvc,
+			papersSvc,
+			toolkitSvc,
 		},
 		Windows: &windows.Options{
 			WebviewIsTransparent:              true,

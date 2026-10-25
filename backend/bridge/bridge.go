@@ -21,6 +21,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"personal-terminal/backend/core"
@@ -33,7 +34,21 @@ type Server struct {
 	token string
 	emit  func(name string, data ...interface{}) // Wails EventsEmit wrapper
 	addr  net.Addr
+
+	// recent records every bus event forwarded through this server
+	// (ring buffer, newest last) so localhost tools can verify delivery
+	// headlessly via GET /api/events/recent — no GUI inspection needed.
+	mu     sync.Mutex
+	recent []eventRecord
 }
+
+type eventRecord struct {
+	Topic   string                 `json:"topic"`
+	Payload map[string]interface{} `json:"payload"`
+	TS      string                 `json:"ts"`
+}
+
+const recentCap = 200
 
 // EmitFn is how the app forwards bus events into the webview.
 type EmitFn func(name string, data ...interface{})
@@ -291,6 +306,35 @@ func (s *Server) routes(mux *http.ServeMux) {
 		writeJSON(w, 200, ov)
 	})
 
+	// /api/inbox — "what the user is dealing with": recent fleeting notes,
+	// open todos, latest edited notes. Read-only perception source for the
+	// companion (FAS polls this so her proactive speech has ground truth).
+	mux.HandleFunc("GET /api/inbox", func(w http.ResponseWriter, r *http.Request) {
+		out := map[string]interface{}{"ts": time.Now().Unix()}
+		if fl, err := fleeting.Stream(20); err == nil {
+			out["fleeting"] = fl
+		}
+		if tds, err := todo.List(""); err == nil {
+			open := make([]map[string]interface{}, 0, 20)
+			for _, t := range tds {
+				if !t.Done && len(open) < 20 {
+					open = append(open, map[string]interface{}{
+						"title": t.Title, "list": t.List, "important": t.Important})
+				}
+			}
+			out["todos_open"] = open
+		}
+		if ns, err := notes.List("", 10); err == nil {
+			brief := make([]map[string]interface{}, 0, len(ns))
+			for _, n := range ns {
+				brief = append(brief, map[string]interface{}{
+					"title": n.Title, "template": n.Template, "updated_at": n.UpdatedAt})
+			}
+			out["notes_recent"] = brief
+		}
+		writeJSON(w, 200, out)
+	})
+
 	// /api/events lets Fascinator push arbitrary events into the UI,
 	// e.g. "fas.node.created" or "fas.action.executed".
 	mux.HandleFunc("POST /api/events", func(w http.ResponseWriter, r *http.Request) {
@@ -304,6 +348,28 @@ func (s *Server) routes(mux *http.ServeMux) {
 		}
 		s.forwardEvent(in.Topic, in.Payload)
 		writeJSON(w, 200, map[string]interface{}{"ok": true})
+	})
+
+	// /api/events/recent?topic=x&limit=n — read back what the bridge has
+	// journaled (newest first). Lets tools verify event delivery headlessly.
+	mux.HandleFunc("GET /api/events/recent", func(w http.ResponseWriter, r *http.Request) {
+		topic := r.URL.Query().Get("topic")
+		limit := 50
+		if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 {
+			limit = v
+			if limit > recentCap {
+				limit = recentCap
+			}
+		}
+		s.mu.Lock()
+		out := make([]eventRecord, 0, limit)
+		for i := len(s.recent) - 1; i >= 0 && len(out) < limit; i-- {
+			if topic == "" || s.recent[i].Topic == topic {
+				out = append(out, s.recent[i])
+			}
+		}
+		s.mu.Unlock()
+		writeJSON(w, 200, map[string]interface{}{"events": out, "count": len(out)})
 	})
 
 	// /api/notify shows a toast banner inside the terminal window.
@@ -325,8 +391,16 @@ func (s *Server) routes(mux *http.ServeMux) {
 }
 
 // forwardEvent publishes on the internal bus and, when the window is up,
-// re-emits it into the webview so React can react.
+// re-emits it into the webview so React can react. Every event is also
+// journaled into the ring buffer read by GET /api/events/recent.
 func (s *Server) forwardEvent(topic string, payload map[string]interface{}) {
+	s.mu.Lock()
+	s.recent = append(s.recent, eventRecord{
+		Topic: topic, Payload: payload, TS: time.Now().Format(time.RFC3339)})
+	if len(s.recent) > recentCap {
+		s.recent = append(s.recent[:0:0], s.recent[len(s.recent)-recentCap:]...)
+	}
+	s.mu.Unlock()
 	core.GlobalBus.Publish(topic, payload)
 	if s.emit != nil {
 		s.emit(topic, payload)

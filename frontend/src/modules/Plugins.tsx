@@ -71,7 +71,7 @@ export const Plugins: React.FC = () => {
         <div className="p-6 space-y-4">
             <GlassPanel
                 title="PLUGINS · 插件中心"
-                subtitle={`已安装 ${items.length} 个插件 · 拖拽 plugin.json 文件夹到工作区即可装载`}
+                subtitle={`已安装 ${items.length} 个`}
                 meta={<span className="pt-mono text-xs text-text-lo">~/.personal-terminal/plugins</span>}
                 scanline
                 actions={

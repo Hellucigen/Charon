@@ -6,6 +6,14 @@ export function AddPodcast(arg1:string,arg2:string):Promise<modules.Podcast>;
 
 export function DeletePodcast(arg1:string):Promise<void>;
 
+export function NeteasePlaylist(arg1:number):Promise<Array<modules.NeteaseSong>>;
+
+export function NeteaseSearch(arg1:string):Promise<Array<modules.NeteaseSong>>;
+
+export function NeteaseSongURL(arg1:number):Promise<string>;
+
+export function NeteaseUserPlaylists(arg1:string):Promise<Array<modules.NeteasePlaylist>>;
+
 export function Play(arg1:string,arg2:string):Promise<void>;
 
 export function Podcasts():Promise<Array<modules.Podcast>>;

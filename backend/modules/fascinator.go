@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -34,6 +35,10 @@ type FascinatorService struct {
 	appPath  string // path to app.py
 	cfgPath  string // path to config.json / config.yaml (optional)
 	port     int
+	// adopted is set when Start found an already-healthy FAS on the port
+	// (manually started, or started by a previous shell): we proxy and
+	// observe it, but never kill it — its in-memory graph is not ours.
+	adopted bool
 }
 
 func NewFascinatorService() *FascinatorService {
@@ -101,6 +106,22 @@ func (s *FascinatorService) Start() error {
 	}
 	s.mu.Unlock()
 
+	// Take over, never displace: if a healthy FAS already answers on the
+	// target port, adopt it instead of spawning a duplicate that would
+	// die on the port conflict (and must not be "fixed" by killing the
+	// incumbent — its in-memory graph is unsaved state).
+	if s.ping() {
+		s.logBuf.Append(fmt.Sprintf(
+			"[charon] FAS already healthy on :%d — adopting external instance (no spawn, no kill)", s.port))
+		s.mu.Lock()
+		s.adopted = true
+		s.mu.Unlock()
+		if core.GlobalBus != nil {
+			core.GlobalBus.Publish("fascinator.started", map[string]interface{}{"port": s.port, "adopted": true})
+		}
+		return nil
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	s.mu.Lock()
 	s.cancel = cancel
@@ -123,6 +144,7 @@ func (s *FascinatorService) Start() error {
 
 	s.mu.Lock()
 	s.cmd = cmd
+	s.adopted = false
 	s.mu.Unlock()
 
 	go s.tail(stdout)
@@ -143,10 +165,39 @@ func (s *FascinatorService) Start() error {
 	return nil
 }
 
+// TryAdopt is the startup-time half of takeover: if a healthy FAS already
+// listens on the configured port, adopt it (proxy + observe) without any
+// click. Unlike Start it NEVER spawns — booting Charon must not silently
+// launch the heavy companion; it only takes over what the user already
+// has running.
+func (s *FascinatorService) TryAdopt() bool {
+	s.mu.Lock()
+	owned := s.cmd != nil && s.cmd.Process != nil
+	s.mu.Unlock()
+	if owned || !s.ping() {
+		return false
+	}
+	s.mu.Lock()
+	s.adopted = true
+	s.mu.Unlock()
+	s.logBuf.Append(fmt.Sprintf(
+		"[charon] startup adopt: healthy FAS found on :%d (no spawn)", s.port))
+	if core.GlobalBus != nil {
+		core.GlobalBus.Publish("fascinator.started", map[string]interface{}{"port": s.port, "adopted": true})
+	}
+	return true
+}
+
 func (s *FascinatorService) Stop() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.cmd == nil || s.cmd.Process == nil {
+		if s.adopted {
+			// Detach only: the adopted process was not started by us and
+			// holds unsaved in-memory state — Stop must never kill it.
+			s.adopted = false
+			return nil
+		}
 		return errors.New("fascinator not running")
 	}
 	if s.cancel != nil {
@@ -158,6 +209,12 @@ func (s *FascinatorService) Stop() error {
 }
 
 func (s *FascinatorService) Restart() error {
+	s.mu.Lock()
+	adoptedOnly := s.adopted && (s.cmd == nil || s.cmd.Process == nil)
+	s.mu.Unlock()
+	if adoptedOnly {
+		return errors.New("当前是收养的外部进程，Charon 无权重启它；如需重启请在外部停止该进程后再 Start")
+	}
 	_ = s.Stop()
 	time.Sleep(400 * time.Millisecond)
 	return s.Start()
@@ -171,15 +228,26 @@ func (s *FascinatorService) Status() map[string]interface{} {
 	if running {
 		pid = s.cmd.Process.Pid
 	}
+	adopted := s.adopted && !running
 	s.mu.Unlock()
 
 	healthy := false
-	if running {
+	if adopted {
+		// An adopted instance's liveness IS the ping; when it goes away we
+		// silently detach so the panel falls back to a plain Start.
+		if healthy = s.ping(); !healthy {
+			s.mu.Lock()
+			s.adopted = false
+			s.mu.Unlock()
+			adopted = false
+		}
+	} else if running {
 		healthy = s.ping()
 	}
 
 	return map[string]interface{}{
-		"running": running,
+		"running": running || adopted,
+		"adopted": adopted,
 		"pid":     pid,
 		"port":    s.port,
 		"healthy": healthy,
@@ -237,7 +305,13 @@ func (s *FascinatorService) Call(method, path string, payload map[string]interfa
 	}
 	req.Header.Set("Content-Type", "application/json")
 
+	// LLM 回合（/api/nlp）实测 15–60s，8s 一刀切会误报投递失败
+	// （SPEAK 页 19:22 的 [投递失败] 行即此，回复其实经事件通道正常到达）。
+	// 对话口给足预算，其余观测口保持快超时，不拖面板轮询。
 	c := http.Client{Timeout: 8 * time.Second}
+	if strings.HasPrefix(path, "/api/nlp") {
+		c.Timeout = 120 * time.Second
+	}
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, err

@@ -11,7 +11,7 @@ export const Creative: React.FC = () => {
 
   return (
     <div className="p-6 space-y-4">
-      <GlassPanel title="CREATIVE · 创意工作台" subtitle="情绪板 · 专注写作 · 字数目标" />
+      <GlassPanel title="CREATIVE · 创意工作台" />
       <div className="flex items-center gap-1">
         {(['mood', 'writing'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}

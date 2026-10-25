@@ -80,6 +80,13 @@ func (a *App) startup(ctx context.Context) {
 		log.Println("fascinator not configured — set paths in Settings")
 	}
 
+	// Takeover at boot: if the user already has a healthy FAS running
+	// (started manually or by a previous shell), adopt it right away so
+	// the panel proxies it without a Start click. Never spawns here.
+	if a.fascinatorService.TryAdopt() {
+		log.Println("fascinator adopted: external instance already running")
+	}
+
 	// Reverse bridge: let Fascinator (or any localhost tool) operate
 	// Charon over a token-guarded HTTP API.
 	if a.config.BridgeEnabled {

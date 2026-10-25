@@ -78,6 +78,34 @@ export namespace modules {
 	        this.unlocked_at = source["unlocked_at"];
 	    }
 	}
+	export class Assignment {
+	    id: string;
+	    course_id?: string;
+	    course?: string;
+	    title: string;
+	    due_at: number;
+	    done: boolean;
+	    priority?: string;
+	    notes?: string;
+	    created_at: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Assignment(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.course_id = source["course_id"];
+	        this.course = source["course"];
+	        this.title = source["title"];
+	        this.due_at = source["due_at"];
+	        this.done = source["done"];
+	        this.priority = source["priority"];
+	        this.notes = source["notes"];
+	        this.created_at = source["created_at"];
+	    }
+	}
 	export class BoardItem {
 	    type: string;
 	    value: string;
@@ -191,6 +219,34 @@ export namespace modules {
 	        this.created_at = source["created_at"];
 	    }
 	}
+	export class Course {
+	    id: string;
+	    name: string;
+	    teacher?: string;
+	    location?: string;
+	    day: number;
+	    start?: string;
+	    end?: string;
+	    credits: number;
+	    score: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Course(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.teacher = source["teacher"];
+	        this.location = source["location"];
+	        this.day = source["day"];
+	        this.start = source["start"];
+	        this.end = source["end"];
+	        this.credits = source["credits"];
+	        this.score = source["score"];
+	    }
+	}
 	export class Deck {
 	    id: string;
 	    name: string;
@@ -297,6 +353,28 @@ export namespace modules {
 	        this.created_at = source["created_at"];
 	    }
 	}
+	export class EdgeVisit {
+	    url: string;
+	    title: string;
+	    day: string;
+	    visit_at: number;
+	    profile: string;
+	    duration_ms?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new EdgeVisit(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.url = source["url"];
+	        this.title = source["title"];
+	        this.day = source["day"];
+	        this.visit_at = source["visit_at"];
+	        this.profile = source["profile"];
+	        this.duration_ms = source["duration_ms"];
+	    }
+	}
 	export class Episode {
 	    title: string;
 	    url: string;
@@ -381,6 +459,66 @@ export namespace modules {
 	        this.updated_at = source["updated_at"];
 	    }
 	}
+	export class JanitorItem {
+	    path: string;
+	    name: string;
+	    ext: string;
+	    kind: string;
+	    size: number;
+	    mtime: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new JanitorItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.ext = source["ext"];
+	        this.kind = source["kind"];
+	        this.size = source["size"];
+	        this.mtime = source["mtime"];
+	    }
+	}
+	export class NeteasePlaylist {
+	    id: number;
+	    name: string;
+	    track_count: number;
+	    cover?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new NeteasePlaylist(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.track_count = source["track_count"];
+	        this.cover = source["cover"];
+	    }
+	}
+	export class NeteaseSong {
+	    id: number;
+	    name: string;
+	    artist: string;
+	    album: string;
+	    duration: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new NeteaseSong(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.artist = source["artist"];
+	        this.album = source["album"];
+	        this.duration = source["duration"];
+	    }
+	}
 	export class Note {
 	    id: string;
 	    title: string;
@@ -405,6 +543,58 @@ export namespace modules {
 	        this.parent_id = source["parent_id"];
 	        this.created_at = source["created_at"];
 	        this.updated_at = source["updated_at"];
+	    }
+	}
+	export class Paper {
+	    id: string;
+	    title: string;
+	    authors?: string;
+	    venue?: string;
+	    year: number;
+	    pdf_path?: string;
+	    status: string;
+	    rating: number;
+	    tags?: string;
+	    notes?: string;
+	    created_at: number;
+	    finished_at: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Paper(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.authors = source["authors"];
+	        this.venue = source["venue"];
+	        this.year = source["year"];
+	        this.pdf_path = source["pdf_path"];
+	        this.status = source["status"];
+	        this.rating = source["rating"];
+	        this.tags = source["tags"];
+	        this.notes = source["notes"];
+	        this.created_at = source["created_at"];
+	        this.finished_at = source["finished_at"];
+	    }
+	}
+	export class PaperFile {
+	    path: string;
+	    name: string;
+	    size: number;
+	    imported: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PaperFile(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.size = source["size"];
+	        this.imported = source["imported"];
 	    }
 	}
 	export class PasswordEntry {

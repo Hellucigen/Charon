@@ -48,7 +48,7 @@ export const Shortcuts: React.FC = () => {
     <div className="p-6 space-y-4">
       <GlassPanel
         title="SHORTCUTS · 文件夹与快捷方式"
-        subtitle="一键打开资源管理器 / 终端 / VSCode · 支持 .lnk 导入"
+
         meta={<span className="pt-mono text-xs text-text-lo">{items.length} 项</span>}
         actions={
           <button className="pt-btn pt-btn-primary" onClick={() => setShowAdd(v => !v)}>

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import GlassPanel from '@/components/GlassPanel'
 import { api } from '@/lib/api'
+import { EventsOn } from '@/wailsjs/runtime/runtime'
 import {
   Play, Square, RotateCcw, Send, Settings as Cog, Activity, Zap, Network,
   Brain, Boxes, Ear, MessageSquare, Heart, RefreshCw, Trash2, Plus, Link2,
@@ -16,7 +17,7 @@ import {
  * Raw endpoints go through api.fascinator.call(method, path, body).
  */
 
-type Status = { running: boolean; pid?: number; port?: number; ping?: boolean; healthy?: boolean }
+type Status = { running: boolean; pid?: number; port?: number; ping?: boolean; healthy?: boolean; adopted?: boolean }
 type ParsedNLP = {
   nodes: string[]
   edges: { src: string; dst: string; relation: string }[]
@@ -27,14 +28,14 @@ const fas = (m: string, p: string, body?: any) => api.fascinator.call(m, p, body
 
 const TABS = [
   'console', 'graph', 'nlp', 'engine', 'actions', 'self',
-  'memory', 'packs', 'sense', 'chat', 'config',
+  'memory', 'packs', 'sense', 'speak', 'body', 'chat', 'config',
 ] as const
 type Tab = typeof TABS[number]
 
 const TAB_LABEL: Record<Tab, string> = {
   console: 'CONSOLE', graph: 'GRAPH', nlp: 'NLP', engine: 'ENGINE',
   actions: 'ACTIONS', self: 'SELF', memory: 'MEMORY', packs: 'PACKS',
-  sense: 'SENSE', chat: 'CHAT', config: 'CONFIG',
+  sense: 'SENSE', speak: 'SPEAK', body: 'BODY', chat: 'CHAT', config: 'CONFIG',
 }
 
 export const Fascinator: React.FC = () => {
@@ -77,8 +78,8 @@ export const Fascinator: React.FC = () => {
   const StatusBlob = (
     <div className="flex items-center gap-2 pt-mono text-xs text-text-mid">
       {dot}
-      <span>{status.running ? 'RUNNING' : 'STOPPED'}</span>
-      {status.running && status.pid ? <><span className="text-text-lo">·</span><span>PID {status.pid}</span></> : null}
+      <span>{status.running ? (status.adopted ? 'ADOPTED · 外部实例' : 'RUNNING') : 'STOPPED'}</span>
+      {status.running && !status.adopted && status.pid ? <><span className="text-text-lo">·</span><span>PID {status.pid}</span></> : null}
       {status.running && status.port ? <><span className="text-text-lo">·</span><span>:{status.port}</span></> : null}
     </div>
   )
@@ -87,7 +88,7 @@ export const Fascinator: React.FC = () => {
     <div className="p-6 space-y-4 max-w-[1500px]">
       <GlassPanel
         title="FASCINATOR · 认知架构控制台"
-        subtitle="知识图谱 · 激活扩散 · 程序性记忆 · 自我模型 · 感知通道"
+
         meta={StatusBlob}
         scanline
         actions={
@@ -104,10 +105,6 @@ export const Fascinator: React.FC = () => {
           </div>
         }
       >
-        <div className="flex items-center gap-4 mt-3 text-xs text-text-lo">
-          <span className="pt-mono">v0.2 · 80+ API 全量接管</span>
-          <span>未启动时以下各页仅浏览本地缓存状态，启动后全功能可用</span>
-        </div>
       </GlassPanel>
 
       {err && <div className="pt-glass p-3 text-xs text-sig-error pt-mono border-sig-error">{err}</div>}
@@ -137,6 +134,8 @@ export const Fascinator: React.FC = () => {
       {tab === 'memory' && <MemoryTab running={status.running} />}
       {tab === 'packs' && <PacksTab running={status.running} />}
       {tab === 'sense' && <SenseTab running={status.running} />}
+      {tab === 'speak' && <SpeakTab running={status.running} />}
+      {tab === 'body' && <BodyTab running={status.running} />}
       {tab === 'chat' && <ChatTab running={status.running} />}
       {tab === 'config' && <ConfigTab />}
     </div>
@@ -222,11 +221,19 @@ const GraphTab: React.FC<{ running: boolean }> = ({ running }) => {
   const [newNode, setNewNode] = useState({ id: '', label: 'declarative-semantic', weight: 0.5 })
   const [relation, setRelation] = useState('related_to')
   const [filter, setFilter] = useState('')
+  const [tk, setTk] = useState<any[]>([])
+  const [th, setTh] = useState(0.1)
+  const thRef = useRef(0.1)
+  thRef.current = th
   const svgRef = useRef<SVGSVGElement | null>(null)
   const W = 960, H = 600
 
   const load = async () => {
-    const r = await fas('GET', '/api/graph?full=true')
+    const [r, tkr] = await Promise.all([
+      fas('GET', `/api/graph?threshold=${thRef.current}`),
+      fas('GET', '/api/topk'),
+    ])
+    setTk(tkr?.nodes ?? [])
     if (!r) return
     const ns: GNode[] = (r.nodes ?? []).slice(0, 400)
     const es: GEdge[] = (r.edges ?? []).slice(0, 900)
@@ -306,7 +313,9 @@ const GraphTab: React.FC<{ running: boolean }> = ({ running }) => {
     setSelected(nd)
   }
 
-  const shown = nodes.filter(n => !filter || n.id.toLowerCase().includes(filter.toLowerCase()))
+  const shown = nodes.filter(n =>
+    (Number(n.activation ?? 0) >= th || selected?.id === n.id)
+    && (!filter || n.id.toLowerCase().includes(filter.toLowerCase())))
   const shownIds = new Set(shown.map(n => n.id))
 
   if (!running) return <>{needRun(running)}</>
@@ -348,7 +357,7 @@ const GraphTab: React.FC<{ running: boolean }> = ({ running }) => {
               )
             })}
             {shown.map(n => {
-              const act = Math.min(1, Number(n.activation ?? 0))
+              const act = Math.min(1, Number(n.activation ?? 0) / 5)
               const r = 5 + Math.abs(Number(n.weight ?? 0)) * 6
               const isSel = selected?.id === n.id
               return (
@@ -369,6 +378,36 @@ const GraphTab: React.FC<{ running: boolean }> = ({ running }) => {
         </div>
 
         <div className="space-y-3">
+          <Panel label="NOW ACTIVE · 当前活跃" meta={<span className="pt-mono text-[10px] text-text-lo">激活≥阈值</span>}>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="pt-mono text-[10px] text-text-lo">阈值</span>
+              <input type="number" step="0.05" min="0" value={th}
+                onChange={e => setTh(Math.max(0, Number(e.target.value) || 0))}
+                className="pt-input w-16 pt-mono text-xs" />
+              <span className="pt-mono text-[10px] text-text-lo ml-auto">
+                {tk.filter(n => Number(n.activation ?? 0) >= th).length} 个</span>
+            </div>
+            <div className="space-y-1 max-h-[360px] overflow-auto">
+              {tk.filter(n => Number(n.activation ?? 0) >= th)
+                .sort((a, b) => Number(b.activation ?? 0) - Number(a.activation ?? 0))
+                .map(n => (
+                <button key={String(n.id)}
+                  onClick={() => { const hit = nodes.find(x => x.id === n.id); if (hit) setSelected(hit) }}
+                  className="w-full flex items-center gap-2 border border-edge px-2 py-1 text-left hover:border-accent/60">
+                  <span className="truncate text-xs flex-1 min-w-0">{String(n.id)}</span>
+                  <span className="w-14 h-1 bg-edge rounded relative shrink-0">
+                    <span className="absolute inset-y-0 left-0 bg-accent rounded"
+                      style={{ width: `${Math.min(100, Number(n.activation ?? 0) * 20)}%` }} />
+                  </span>
+                  <span className="pt-mono text-[10px] text-accent w-10 text-right shrink-0">
+                    {Number(n.activation ?? 0).toFixed(2)}</span>
+                </button>
+              ))}
+              {tk.filter(n => Number(n.activation ?? 0) >= th).length === 0 && (
+                <div className="text-xs text-text-lo">此刻没有超过阈值的节点。</div>)}
+            </div>
+            <div className="text-[10px] text-text-lo mt-1">2.5s 自动刷新 · 点击定位图上节点</div>
+          </Panel>
           <Panel label="ADD NODE">
             <div className="space-y-2">
               <input className="pt-input w-full pt-mono text-xs" placeholder="节点 ID（如 图书馆）"
@@ -567,6 +606,8 @@ const ActionsTab: React.FC<{ running: boolean }> = ({ running }) => {
   const [state, setState] = useState<any>(null)
   const [log, setLog] = useState<any[]>([])
   const [registered, setRegistered] = useState<any[]>([])
+  // 动作窗口实时化（2026-10-21）：桥事件 fas.action + 2.5s 兜底轮询。
+  const [live, setLive] = useState<any | null>(null)
 
   const load = async () => {
     const [c, i, s, l, r] = await Promise.all([
@@ -582,7 +623,21 @@ const ActionsTab: React.FC<{ running: boolean }> = ({ running }) => {
     if (l) setLog(l.items ?? l.log ?? l ?? [])
     if (r) setRegistered(r.items ?? r.actions ?? r ?? [])
   }
-  useEffect(() => { if (running) load() }, [running])
+  useEffect(() => {
+    if (!running) return
+    load()
+    // 实时动作窗（2026-10-21）：2.5s 轮询兜底 + fas.action 桥事件即时刷新
+    const t = setInterval(load, 2500)
+    const off = EventsOn('fas.action', (data: any) => {
+      const p = Array.isArray(data) ? data[0] : data
+      if (!p) return
+      setLive(p)
+      if (p.kind === 'settle') {
+        setLog(l => [p, ...l.filter(x => !(x?.ts === p.ts && x?.action === p.action))].slice(0, 120))
+      }
+    })
+    return () => { clearInterval(t); off?.() }
+  }, [running])
 
   if (!running) return <>{needRun(running)}</>
 
@@ -609,17 +664,44 @@ const ActionsTab: React.FC<{ running: boolean }> = ({ running }) => {
           )) : <div className="text-text-lo">无</div>}
         </div>
       </Panel>
-      <Panel label="STATE">
-        <pre className="text-[11px] pt-mono text-text-mid max-h-56 overflow-auto whitespace-pre-wrap">
-          {state ? JSON.stringify(state, null, 2) : '—'}
-        </pre>
+      <Panel label="NOW — 她正在做什么">
+        {(() => {
+          const a = state?.action ?? state
+          const cur = a?.current
+          return (
+            <div className="text-xs pt-mono space-y-1">
+              {cur ? (
+                <div className="text-accent">
+                  正在：{String(cur.action_type ?? cur.action ?? '?')}
+                  {cur.target ? ` → ${cur.target}` : ''}
+                  <span className="text-text-lo">（已 {a.current_elapsed_s ?? 0}s）</span>
+                </div>
+              ) : <div className="text-text-lo">当前空闲</div>}
+              {Array.isArray(a?.goal_queue) && a.goal_queue.length > 0 && (
+                <div className="text-text-mid">队列：{a.goal_queue.map((g: any) => g.action_type ?? g).slice(0, 6).join(' → ')}</div>
+              )}
+              {live?.kind === 'start' && (
+                <div className="text-text-mid">刚刚接到：{live.action}{live.target ? ` → ${live.target}` : ''}</div>
+              )}
+              {a?.stats && (
+                <div className="text-text-lo">
+                  累计 ✓{a.stats.success ?? 0} ✗{a.stats.failed ?? 0} 打断{a.stats.interrupted ?? a.stats.cancelled ?? 0}
+                </div>
+              )}
+            </div>
+          )
+        })()}
       </Panel>
       <div className="col-span-2">
-        <Panel label="ACTION LOG">
+        <Panel label="ACTION LOG — 历史动作序列" meta={<span className="text-[10px] text-text-lo">事件即时 + 2.5s 轮询 · FAS 侧已落盘 data/action_history.jsonl</span>}>
           <div className="space-y-1 max-h-64 overflow-auto text-xs pt-mono">
             {log.length ? log.map((l: any, i) => (
-              <div key={i} className="text-text-mid border-b border-edge/50 pb-1">
-                {typeof l === 'string' ? l : JSON.stringify(l)}
+              <div key={i} className="flex items-center gap-2 border-b border-edge/50 py-1">
+                <span className="text-text-lo w-14 shrink-0">{String(l.ts ?? '').slice(11, 19)}</span>
+                <span className={l.success ? 'text-accent' : 'text-red-400'}>{l.success ? '✓' : '✗'}</span>
+                <span className="text-text-mid">{String(l.action ?? '?')}{l.target ? ` → ${l.target}` : ''}</span>
+                {!!l.reason && <span className="text-text-lo truncate max-w-40">{l.reason}</span>}
+                {typeof l.duration_s === 'number' && <span className="text-text-lo ml-auto shrink-0">{l.duration_s}s</span>}
               </div>
             )) : <div className="text-text-lo">暂无执行记录</div>}
           </div>
@@ -993,6 +1075,504 @@ const ChatTab: React.FC<{ running: boolean }> = ({ running }) => {
 
 /* ── CONFIG ───────────────────────────────────────────────────────── */
 
+/* ── SPEAK — 她的实时消息流 + 直接对话 ────────────────────────────────
+ * 消息来源两路：
+ *   1. fas.utterance 桥事件（reactive 回复 / proactive 主动 / question 提问），
+ *      由 App.tsx 统一写入 localStorage('haru.speak.log')，本页读取 + 实时追加；
+ *   2. 本页输入框 POST /api/nlp（走面板同一 REST 代理），发送方留痕。
+ * 她选择沉默时（回合无 answer）不会有任何 haru 消息——沉默也是回答。 */
+
+type SpeakMsg = { id: number; role: 'haru' | 'you'; text: string; origin?: string; ts: number;
+  // 调试（2026-10-19）：这条话生成时所用的图谱切片（FAS 侧 refs.graph 随桥下行）
+  graph?: { ci?: string | null; goal?: string | null; class?: string | null;
+            nodes?: { id: string; note?: string; act?: number; conf?: number | null;
+                      created?: string; role?: 'basis' | 'hot' }[];
+            edges?: [string, string, string, number][] } | null }
+const SPEAK_STORE = 'haru.speak.log'
+const SPEAK_CAP = 200
+const ORIGIN_TAG: Record<string, string> = { proactive: '主动', question: '提问', reactive: '回复' }
+
+const SpeakTab: React.FC<{ running: boolean }> = ({ running }) => {
+  const [msgs, setMsgs] = useState<SpeakMsg[]>(() => {
+    try {
+      const raw = localStorage.getItem(SPEAK_STORE)
+      const arr = raw ? JSON.parse(raw) : []
+      return Array.isArray(arr) ? arr.slice(-SPEAK_CAP) : []
+    } catch { return [] }
+  })
+  const [input, setInput] = useState('')
+  const [sending, setSending] = useState(false)
+  const listRef = useRef<HTMLDivElement | null>(null)
+  const seen = useRef(new Map<string, number>())
+
+  // 去重：桥事件与 /api/nlp 应答兜底可能同文双至（10s 窗口内同 role+text 算一条）
+  const add = (m: Omit<SpeakMsg, 'id'>) => {
+    const key = `${m.role}|${m.text}`
+    const last = seen.current.get(key)
+    const now = Date.now()
+    if (last && now - last < 10000) return
+    seen.current.set(key, now)
+    setMsgs(ms => [...ms, { ...m, id: now + Math.random() }].slice(-SPEAK_CAP))
+  }
+
+  useEffect(() => {
+    const off = EventsOn('fas.utterance', (data: any) => {
+      const u = Array.isArray(data) ? data[0] : data
+      const text = String(u?.text ?? '').trim()
+      if (!text) return
+      add({ role: 'haru', text, origin: String(u?.origin ?? 'reactive'),
+            ts: Date.now(), graph: u?.refs?.graph ?? null })
+    })
+    return () => { off?.() }
+  }, [])
+
+  /* 保底补拉（2026-10-16）：桥事件只到"当时在线"的前端——Charon 停机、
+   * 订阅未装载或恰好错过投递瞬间，她当时说的话就永远进不了气泡流。
+   * 但话本身在 Haru 侧有账（chat_log 的 proactive/question 条目），
+   * 挂载时补拉一次合并进历史（文本去重），气泡与事实保底一致。 */
+  useEffect(() => {
+    let dead = false
+    ;(async () => {
+      try {
+        const r: any = await fas('GET', '/api/chat/log?n=80')
+        if (dead || !r?.success || !Array.isArray(r.entries)) return
+        const back: SpeakMsg[] = []
+        for (const e of r.entries) {
+          let text = '', origin = ''
+          if (e?.proactive) { text = String(e.system_response ?? '').trim(); origin = 'proactive' }
+          else if (e?.curiosity && e?.curiosity_question) { text = String(e.curiosity_question).trim(); origin = 'question' }
+          if (!origin || !text) continue
+          back.push({
+            id: back.length + Math.random(), role: 'haru', text, origin,
+            ts: e?.time ? (new Date(e.time).getTime() || 0) : 0,
+          })
+        }
+        if (!back.length) return
+        setMsgs(prev => {
+          const known = new Set(prev.map(m => `haru|${m.text}`))
+          const merged = [...prev]
+          for (const m of back) {
+            if (!known.has(`haru|${m.text}`)) { merged.push(m); known.add(`haru|${m.text}`) }
+          }
+          merged.sort((a, b) => a.ts - b.ts)
+          const next = merged.slice(-SPEAK_CAP)
+          try { localStorage.setItem(SPEAK_STORE, JSON.stringify(next)) } catch { /* 存储满：会话内可见即可 */ }
+          return next
+        })
+      } catch { /* Haru 没跑 = 无从补拉，不影响实时通道 */ }
+    })()
+    return () => { dead = true }
+  }, [])
+
+  useEffect(() => {
+    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
+  }, [msgs])
+
+  const send = async () => {
+    const t = input.trim()
+    if (!t || sending) return
+    setSending(true)
+    setInput('')
+    const mine: SpeakMsg = { id: Date.now() + Math.random(), role: 'you', text: t, ts: Date.now() }
+    add(mine)
+    // haru 消息由 App.tsx 全局监听统一落盘；'you' 只有这里产生，自己补写，
+    // 否则切走 tab 再回来，自己说的话会从历史里消失。
+    try {
+      const arr = JSON.parse(localStorage.getItem(SPEAK_STORE) || '[]')
+      arr.push(mine)
+      localStorage.setItem(SPEAK_STORE, JSON.stringify(arr.slice(-SPEAK_CAP)))
+    } catch { /* 存储满 → 本次会话内仍可见 */ }
+    try {
+      const r: any = await fas('POST', '/api/nlp', { text: t })
+      if (r?.answer) add({ role: 'haru', text: String(r.answer), origin: 'reactive', ts: Date.now() })
+    } catch (e: any) {
+      add({ role: 'haru', text: `[投递失败] ${String(e?.message ?? e)}`, origin: 'error', ts: Date.now() })
+    } finally { setSending(false) }
+  }
+
+  return (
+    <div className="space-y-3">
+      <Panel label="HARU · 她的话" meta={
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-text-lo pt-mono">{msgs.length} 条 · 本地留存 {SPEAK_CAP} 封顶</span>
+          <button className="pt-btn pt-btn-ghost text-sig-error" title="清空"
+            onClick={() => { setMsgs([]); try { localStorage.removeItem(SPEAK_STORE) } catch {} }}>
+            <Trash2 size={12} />
+          </button>
+        </div>
+      }>
+        <div ref={listRef} className="h-[420px] overflow-auto space-y-2 pr-2">
+          {msgs.length === 0
+            ? <div className="text-text-lo text-xs pt-mono">还没有消息 · 她说的每句话（回复/主动/提问）都会留在这里</div>
+            : msgs.map(m => m.role === 'you'
+              ? (
+                <div key={m.id} className="flex justify-end">
+                  <div className="max-w-[70%] border border-edge px-3 py-2 text-xs text-text-mid whitespace-pre-wrap">{m.text}</div>
+                </div>
+              )
+              : (
+                <div key={m.id} className="flex justify-start">
+                  <div className="max-w-[80%] border border-accent/40 px-3 py-2">
+                    <div className="pt-section-label text-accent text-[10px]">
+                      HARU{m.origin && ORIGIN_TAG[m.origin] ? ` · ${ORIGIN_TAG[m.origin]}` : ''}
+                      <span className="text-text-lo ml-2">{new Date(m.ts).toLocaleTimeString()}</span>
+                    </div>
+                    <div className="text-xs text-text-hi mt-1 whitespace-pre-wrap">{m.text}</div>
+                    {m.graph?.nodes?.length ? (
+                      <details className="mt-2">
+                        <summary className="pt-mono text-[10px] text-text-lo cursor-pointer select-none">
+                          调试 · 这次话所用的图谱（{m.graph.nodes.length} 节点
+                          {m.graph.goal ? ` · ${m.graph.goal}` : ''}
+                          {m.graph.ci ? ` · ${m.graph.ci}` : ''}）
+                        </summary>
+                        <div className="mt-1 space-y-0.5">
+                          {m.graph.nodes.map((n, i) => (
+                            <div key={i} className="pt-mono text-[10px] text-text-mid">
+                              {n.role === 'hot'
+                                ? <span className="text-text-lo"
+                                    title="语言层切片里的热节点（未登记为该念头的 basis）">热·</span>
+                                : null}
+                              <span className="text-text-hi">{n.id}</span>
+                              {n.note ? <span className="text-accent">〔{n.note}〕</span> : null}
+                              <span className="text-text-lo">
+                                {' '}act {n.act}
+                                {n.conf != null ? ` · conf ${n.conf}` : ''}
+                                {n.created ? ` · ${n.created}` : ''}
+                              </span>
+                            </div>
+                          ))}
+                          {(m.graph.edges ?? []).map((e, i) => (
+                            <div key={`e${i}`} className="pt-mono text-[10px] text-text-lo">
+                              {e[0]} —{e[1]}→ {e[2]}（{e[3]}）
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+        </div>
+      </Panel>
+      <div className="flex gap-2">
+        <input
+          className="pt-input pt-mono text-xs flex-1"
+          placeholder={running ? '跟她说点什么…（Enter 发送）' : '需要先启动 Fascinator 后端进程'}
+          value={input} disabled={!running || sending}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && send()}
+        />
+        <button className="pt-btn pt-btn-primary" disabled={!running || sending || !input.trim()} onClick={send}>
+          <Send size={12} /> {sending ? '…' : '发送'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/* 统一开关式：语音、麦克风、ghost 都用这一个拨动开关，状态即时反馈。
+ * on=绿色滑块右移，off=灰色左移；disabled 用于"需先开上层开关"。 */
+const Switch: React.FC<{ on: boolean; onClick: () => void; disabled?: boolean; label?: string }> =
+  ({ on, onClick, disabled, label }) => (
+    <button onClick={onClick} disabled={disabled}
+      className={['flex items-center gap-2 group', disabled ? 'opacity-40 cursor-not-allowed' : ''].join(' ')}>
+      <span className={['relative inline-block w-10 h-5 rounded-full transition-colors',
+        on ? 'bg-accent' : 'bg-edge'].join(' ')}>
+        <span className={['absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-surface transition-transform',
+          on ? 'translate-x-5' : ''].join(' ')} style={{ transform: on ? 'translateX(20px)' : 'translateX(0)' }} />
+      </span>
+      {label && <span className={['pt-mono text-xs', on ? 'text-accent' : 'text-text-lo'].join(' ')}>{label}</span>}
+    </button>
+  )
+
+/* ── BODY — 她的身体：语音 / 屏幕观察 / Steam 情境 / 生活循环 / 认知能力 / 云端预算
+ * 全部经 fas() 代理打 FAS-Companion REST。隐私纪律在这页是明面的：
+ * 麦克风监听与屏幕观察开关在后端都是 ephemeral——可热开、重启必关。 */
+
+const BodyTab: React.FC<{ running: boolean }> = ({ running }) => {
+  const [voice, setVoice] = useState<any>(null)
+  const [screen, setScreen] = useState<any>(null)
+  const [avatar, setAvatar] = useState<any>(null)
+  const [living, setLiving] = useState<any>(null)
+  const [caps, setCaps] = useState<any>(null)
+  const [usage, setUsage] = useState<any>(null)
+  const [steam, setSteam] = useState<any>(null)
+  const [pca, setPca] = useState<any>(null)
+  const [ssp, setSsp] = useState<any>(null)
+  const [speakText, setSpeakText] = useState('')
+  const [spk, setSpk] = useState<any>(null)          // 出声进度（快轮询）
+  const spkTimer = useRef<number | null>(null)
+  const [budget, setBudget] = useState('0')
+  const [note, setNote] = useState('')
+
+  const STAGE: Record<string, string> = {
+    loading_models: '加载语音模型', translating: '转成日语', synthesizing: '合成日语音频',
+    playing: '播放中', done: '说完', error: '失败',
+  }
+  const startSpeakPoll = () => {
+    if (spkTimer.current) clearInterval(spkTimer.current)
+    const t0 = Date.now()
+    spkTimer.current = window.setInterval(async () => {
+      const d = await fas('GET', '/api/voice/status')
+      const p = (d as any)?.progress
+      if (p) setSpk(p)
+      if (!p || p.stage === 'done' || p.stage === 'error' || Date.now() - t0 > 200000) {
+        if (spkTimer.current) { clearInterval(spkTimer.current); spkTimer.current = null }
+        if (p && (p.stage === 'done' || p.stage === 'error')) setTimeout(() => setSpk(null), 5000)
+      }
+    }, 700)
+  }
+  useEffect(() => () => { if (spkTimer.current) clearInterval(spkTimer.current) }, [])
+
+  const bodySspRefresh = async () => {
+    const r = await fas('GET', '/api/ssp'); if (r) setSsp(r)
+  }
+
+  const load = async () => {
+    const [v, s, a, l, c, u, st, sp, pa] = await Promise.all([
+      fas('GET', '/api/voice/status'), fas('GET', '/api/screen/status'),
+      fas('GET', '/api/avatar/state'), fas('GET', '/api/living'),
+      fas('GET', '/api/cognition/capabilities'), fas('GET', '/api/usage'),
+      fas('GET', '/api/steam/status'), fas('GET', '/api/ssp'),
+      fas('GET', '/api/pc_autonomy'),
+    ])
+    if (v) setVoice(v); if (s) setScreen(s); if (a) setAvatar(a)
+    if (l) setLiving(l); if (c) setCaps(c); if (u) setUsage(u); if (st) setSteam(st)
+    if (sp) setSsp(sp)
+    if (pa) setPca(pa)
+    if (u?.summary?.budget_cny) setBudget(String(u.summary.budget_cny))
+  }
+  useEffect(() => {
+    if (!running) return
+    load()
+    const id = setInterval(load, 4000)
+    return () => clearInterval(id)
+  }, [running])
+
+  if (!running) return <>{needRun(running)}</>
+  const flash = (t: string) => { setNote(t); setTimeout(() => setNote(''), 4000) }
+
+  const voiceCtl = async (body: any, ok: string) => {
+    const r = await fas('POST', '/api/voice', body); if (r) { flash(ok); load() }
+  }
+  const screenCtl = async (on: boolean) => {
+    const r = await fas('POST', '/api/screen', { enabled: on })
+    if (r) { flash(on ? '屏幕观察已开启（重启后自动关闭）' : '屏幕观察已停止'); load() }
+  }
+  const observeOnce = async () => {
+    const r = await fas('POST', '/api/screen/observe', {})
+    if (r) flash(r.success ? `摘要：${(r.preview ?? '').slice(0, 60)}${r.duplicate ? '（与上次相同）' : ''}` : `观察失败：${r.reason ?? JSON.stringify(r).slice(0, 60)}`)
+  }
+  const livingCtl = async (action: string, aid: string) => {
+    const r = await fas('POST', '/api/living', { action, activity: aid })
+    if (r?.success) { flash(`${action}: ${aid}`); load() } else flash(`失败：${r?.error ?? ''}`)
+  }
+  const setConfig = async (k: string, v: any, ok: string) => {
+    const r = await fas('PUT', '/api/config', { [k]: v })
+    if (r) { flash(ok + '（已持久化）'); load() }
+  }
+
+  const modeColor: Record<string, string> = {
+    production_in_use: 'text-accent', flag_off: 'text-text-lo',
+    enabled_wired_runtime_unverified: 'text-sig-warn',
+  }
+
+  return (
+    <div className="space-y-3">
+      {note && <div className="pt-glass border border-accent/40 p-2 text-xs text-accent pt-mono">{note}</div>}
+
+      {/* 语音 */}
+      <div className="grid grid-cols-2 gap-3">
+        <Panel label="VOICE · 日语语音闭环" meta={<span className="pt-mono text-[10px] text-text-lo">{voice?.state ?? '—'}</span>}>
+          <div className="flex items-center justify-between py-1.5">
+            <span className="text-xs">她说出声（日语 TTS 发声+打断）</span>
+            <Switch on={!!voice?.enabled}
+              onClick={() => voiceCtl(voice?.enabled ? { enabled: false, listen: false } : { enabled: true },
+                voice?.enabled ? '语音已停用' : '语音已启用')} />
+          </div>
+          <div className="flex items-center justify-between py-1.5 border-t border-edge/50">
+            <span className="text-xs">麦克风持续监听 <span className="text-[10px] text-text-lo pt-mono">重启自动关</span></span>
+            <Switch on={!!voice?.listening} disabled={!voice?.enabled}
+              onClick={() => voiceCtl({ listen: !voice?.listening },
+                voice?.listening ? '麦克风已关' : '麦克风监听中')} />
+          </div>
+          <div className="flex gap-2 mt-3">
+            <input className="pt-input flex-1 pt-mono text-xs" placeholder="让她说出这句话（播报前自动转日语）…"
+              value={speakText} onChange={e => setSpeakText(e.target.value)} />
+            <button className="pt-btn pt-btn-primary text-xs" disabled={!speakText.trim() || !!spk}
+              onClick={async () => {
+                const r: any = await fas('POST', '/api/voice/speak', { text: speakText })
+                if (r?.started) { setSpk({ stage: 'loading_models', pct: 1, detail: '已受理' }); startSpeakPoll() }
+                else flash(r?.reason === 'busy' ? '她正在说话中…'
+                  : r?.reason === 'disabled' ? '先拨开上方「她说出声」开关' : '未能开始（语音未装配）')
+              }}>{spk ? '…' : '出声'}</button>
+          </div>
+          {spk && (
+            <div className="mt-3">
+              <div className="flex justify-between text-[10px] pt-mono text-text-lo">
+                <span>{STAGE[spk.stage] ?? spk.stage}{spk.detail ? ` · ${spk.detail}` : ''}</span>
+                <span>{spk.pct}%</span>
+              </div>
+              <div className="h-1.5 bg-edge rounded overflow-hidden mt-1">
+                <div className="h-full bg-accent transition-all duration-700"
+                  style={{ width: `${spk.pct}%` }} />
+              </div>
+            </div>
+          )}
+          <div className="mt-3 space-y-1 text-xs pt-mono text-text-lo">
+            <div>vad: {String(voice?.backends?.vad ?? '—')} · asr: {String(voice?.backends?.asr ?? '—')} · tts: {String(voice?.backends?.tts ?? '—')}</div>
+            <div>分段 {voice?.stats?.segments ?? 0} · 识别 {voice?.stats?.recognized ?? 0} · 出声 {voice?.stats?.spoken ?? 0} · 打断 {voice?.stats?.interrupts ?? 0}</div>
+            {voice?.reason && <div className="text-sig-warn">{String(voice.reason).slice(0, 90)}</div>}
+            <div>说日语={voice?.speak_lang} · 听={voice?.asr_language}（输入输出语言分开，你的中文不会被强改）</div>
+          </div>
+        </Panel>
+
+        {/* 形象状态 + 屏幕 */}
+        <Panel label="AVATAR · 存在感 / SCREEN · 眼睛" meta={
+          <span className={['pt-chip', screen?.enabled ? 'text-sig-warn border-sig-warn' : ''].join(' ')}>{screen?.enabled ? '采集中' : '观察关'}</span>}>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="pt-display text-2xl text-accent">{avatar?.state ?? '—'}</span>
+            <span className="text-xs text-text-lo pt-mono">by {avatar?.source ?? '—'}</span>
+          </div>
+          <div className="text-[10px] pt-mono text-text-lo max-h-16 overflow-auto">
+            {(avatar?.recent ?? []).map((x: any) => `${x.from}→${x.to}`).join(' · ')}
+          </div>
+          <div className="h-px bg-edge my-3" />
+          <div className="flex items-center justify-between py-1.5">
+            <span className="text-xs">屏幕观察 <span className="text-[10px] text-text-lo pt-mono">重启自动关</span></span>
+            <Switch on={!!screen?.enabled}
+              onClick={() => screenCtl(!screen?.enabled)} />
+          </div>
+          <div className="flex items-center gap-2 mt-2">
+            <button className="pt-btn pt-btn-ghost text-xs" disabled={!screen?.enabled} onClick={observeOnce}>观察一次</button>
+          </div>
+          <div className="text-[10px] text-text-lo mt-2 pt-mono">
+            默认关 · 重启必回关 · 采集期右上角常亮指示 · 截图不落盘不上云（本小时 {screen?.hour_count ?? 0} 次 / 共 {screen?.observations ?? 0}）
+          </div>
+        </Panel>
+      </div>
+
+      {/* 生活循环 */}
+      <Panel label="LIVING · 她的后台生活" meta={
+        <div className="flex items-center gap-3">
+          <span className="text-xs pt-mono text-text-lo">今日网络预算余 {living?.budget_left ?? '—'}</span>
+          <Switch on={!!living?.enabled} label={living?.enabled ? 'ON' : 'OFF'}
+            onClick={() => setConfig('living_loop_enabled', !living?.enabled, living?.enabled ? '生活循环关' : '生活循环开')} />
+        </div>}>
+        <div className="space-y-1 max-h-44 overflow-auto">
+          {(living?.activities ?? []).map((a: any) => (
+            <div key={a.id} className="flex items-center gap-2 border border-edge px-2 py-1 text-xs">
+              <span className="pt-mono w-14 text-text-lo">{a.state}</span>
+              <span className="flex-1 truncate">{a.topic}</span>
+              {a.share && <span className="text-accent pt-mono text-[10px]">分享:{a.share}{living?.share_candidates?.some((c: any) => c.topic === a.topic && c.delivered) ? '·已投' : ''}</span>}
+              {['active', 'waiting'].includes(a.state) && <button className="pt-btn pt-btn-ghost text-[10px]" onClick={() => livingCtl('pause', a.id)}>暂停</button>}
+              {a.state === 'paused' && <button className="pt-btn pt-btn-primary text-[10px]" onClick={() => livingCtl('resume', a.id)}>继续</button>}
+              {!['abandoned', 'done'].includes(a.state) && <button className="pt-btn pt-btn-ghost text-[10px] text-sig-error" onClick={() => livingCtl('abandon', a.id)}>放弃</button>}
+            </div>
+          )) || <div className="text-text-lo text-xs">还没有生活活动（开启循环后，她会从聊天里的知识缺口自己找事做）</div>}
+        </div>
+      </Panel>
+
+      {/* 伺か/SSP 桌面形象 */}
+      <Panel label="GHOST · 桌面形象（伺か/SSP）" meta={
+        <span className={['pt-mono text-[10px]', ssp?.ghost_reachable ? 'text-accent' : 'text-text-lo'].join(' ')}>
+          {ssp?.ghost_reachable ? 'ghost 在线' : 'ghost 未显示（托盘里调出）'}
+        </span>}>
+        <div className="flex items-center justify-between py-1.5">
+          <span className="text-xs">让 Haru 用桌面 ghost 演说（话语→气泡+动画）</span>
+          <Switch on={!!ssp?.enabled}
+            onClick={() => fas('POST', '/api/ssp', { enabled: !ssp?.enabled }).then(bodySspRefresh).then(() => flash(ssp?.enabled ? '形象已收回（回 Charon 气泡）' : '形象已启用'))} />
+        </div>
+        <div className="flex items-center gap-2 mt-2">
+          <button className="pt-btn pt-btn-ghost text-xs" disabled={!ssp?.enabled}
+            onClick={async () => {
+              const r = await fas('POST', '/api/ssp', { test: '我是 Haru，桌面形态上线测试。' })
+              flash(r?.delivered ? '已推送——看 ghost 头顶气泡' : 'SSP 不可达（ghost 没显示？）')
+            }}>推一句测试</button>
+          <span className="text-[10px] text-text-lo pt-mono">注：ghost 自身词典的自发台词与 Haru 无关（要纯净需配 Haru 专属空词典 ghost）</span>
+        </div>
+        <div className="text-[10px] text-text-lo mt-2 pt-mono">
+          SSTP over HTTP（127.0.0.1:9801）· 纯表现层旁路，ghost 关了不影响任何功能 · 语音发声与 ghost 无关（那是上面的 VOICE 开关）
+        </div>
+      </Panel>
+
+      {/* 电脑控制权（pc_autonomy）：级别阶梯 + 后台姿态 + 实时在场 */}
+      <Panel label="AUTONOMY · 电脑控制权" meta={<span className="pt-mono text-[11px]">
+        {pca ? (pca.present ? <span className="text-accent">有人在场</span>
+          : <span className="text-text-lo">无人在场</span>) : null}
+        {pca?.idle_s != null ? <span className="text-text-lo"> · 键鼠闲置 {Math.round(pca.idle_s)}s</span> : null}
+      </span>}>
+        <div className="flex gap-2 items-center">
+          {([['off', '关闭'], ['attended', '有人·仅后台'], ['unattended', '无人值守·可前台']] as const).map(([v, lab]) => (
+            <button key={v} className={`pt-btn text-xs ${pca?.level === v ? 'pt-btn-primary' : 'pt-btn-ghost'}`}
+              onClick={async () => {
+                const r = await fas('POST', '/api/pc_autonomy', { level: v })
+                if (r?.success) { flash(`电脑控制权：${lab}`); load() }
+                else flash(`失败：${r?.error ?? ''}`)
+              }}>{lab}</button>
+          ))}
+          <span className="mx-1 text-edge">|</span>
+          <Switch on={!!pca?.background} label="显式后台"
+            onClick={async () => {
+              const r = await fas('POST', '/api/pc_autonomy', { background: !(pca?.background) })
+              if (r?.success) { flash(`后台姿态：${r.changed?.background ? '开' : '关'}`); load() }
+            }} />
+        </div>
+        <div className="text-[10px] text-text-lo mt-1.5 leading-relaxed">
+          关闭=她不能启动任何程序（已开着的照玩）；有人=只在她启动程序时强制最小化不抢你的键鼠；
+          无人值守=可以自己开游戏并放到前台。白名单：{(pca?.apps ?? []).join(' / ') || '（空）'}
+        </div>
+      </Panel>
+
+      {/* Steam + 预算 + 能力 */}
+      <div className="grid grid-cols-3 gap-3">
+        <Panel label="STEAM · 游戏情境" meta={
+          <Switch on={!!steam?.enabled} label={steam?.enabled ? 'ON' : 'OFF'}
+            onClick={() => setConfig('steam_poll_enabled', !steam?.enabled, steam?.enabled ? 'Steam 关' : 'Steam 开')} />}>
+          <div className="text-xs pt-mono text-text-lo space-y-1">
+            <div>key: {steam?.has_key ? '已配置 ✓' : '未配置（STEAM_API_KEY）'}</div>
+            <div>steamid: {steam?.steam_id_set ? '已配置 ✓' : '待提供'}</div>
+          </div>
+          <button className="pt-btn pt-btn-ghost text-xs mt-2"
+            onClick={async () => {
+              const r = await fas('POST', '/api/steam/tick', {})
+              if (r?.ok && r.changed) flash(`事件：${r.event?.kind} ${r.event?.game ?? ''}`)
+              else if (r?.ok) flash(`无变化 · 当前:${r.current?.game ?? '没在玩'}`)
+              else flash(`轮询未成：${r?.reason ?? ''}`)
+            }}>立即轮询一次</button>
+        </Panel>
+
+        <Panel label="USAGE · 云端用量/预算">
+          <div className="text-xs pt-mono space-y-1 text-text-mid">
+            <div>本月调用 <span className="text-accent">{usage?.summary?.calls ?? 0}</span> · 失败 {usage?.summary?.failed ?? 0} · 估算 ¥{usage?.summary?.cost_cny ?? 0}</div>
+            {usage?.over_budget && <div className="text-sig-error">已达预算阈值 → LLM 降级中</div>}
+          </div>
+          <div className="flex gap-2 mt-3">
+            <input className="pt-input w-24 pt-mono text-xs" type="number" min="0" step="1"
+              value={budget} onChange={e => setBudget(e.target.value)} />
+            <button className="pt-btn pt-btn-primary text-xs"
+              onClick={() => setConfig('llm_monthly_budget_cny', Number(budget) || 0, `预算阈值 ¥${budget}`)}>设定</button>
+          </div>
+          <div className="text-[10px] text-text-lo mt-1">0=不限；单价表在认知仓 config（当前未填价=只记账不拦截）</div>
+        </Panel>
+
+        <Panel label="COGNITION · 能力清单" meta={<button className="pt-btn pt-btn-ghost" onClick={load}><RefreshCw size={12} /></button>}>
+          <div className="space-y-1 max-h-56 overflow-auto text-[11px] pt-mono">
+            {Object.entries(caps?.capabilities ?? {}).map(([k, v]: any) => (
+              <div key={k} className="flex justify-between border-b border-edge/50 py-0.5">
+                <span className="text-text-mid">{k}</span>
+                <span className={modeColor[v.mode] ?? 'text-text-lo'}>
+                  {v.mode === 'production_in_use' ? '●在用' : v.mode === 'flag_off' ? '○关' : '◐接线未实测'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </div>
+    </div>
+  )
+}
+
 const ConfigTab: React.FC = () => {
   const [cfgText, setCfgText] = useState('')
 
@@ -1008,7 +1588,7 @@ const ConfigTab: React.FC = () => {
   return (
     <GlassPanel
       title="CONFIG EDITOR"
-      subtitle="Fascinator 超参数 · JSON · 直接写回 config 文件"
+
       actions={
         <div className="flex items-center gap-2">
           <button className="pt-btn pt-btn-ghost" onClick={load}><RotateCcw size={13} /> RELOAD</button>

@@ -60,7 +60,7 @@ export const Finance: React.FC = () => {
   return (
     <div className="p-6 space-y-4">
       <GlassPanel title="FINANCE · 个人财务"
-        subtitle="收支记录 · 支付宝/微信 CSV 导入 · 月度/类别汇总 · 订阅提醒" />
+ />
 
       {/* month picker + tiles */}
       <div className="flex items-center gap-3">

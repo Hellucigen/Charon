@@ -27,4 +27,6 @@ export function Stop():Promise<void>;
 
 export function TopK():Promise<Record<string, any>>;
 
+export function TryAdopt():Promise<boolean>;
+
 export function WriteConfig(arg1:string):Promise<void>;

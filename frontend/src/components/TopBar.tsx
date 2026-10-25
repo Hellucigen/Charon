@@ -44,8 +44,8 @@ export default function TopBar() {
         <div className="flex items-center gap-2 text-[12.5px]">
           <span className="font-mono text-text-lo">~/</span>
           {/* 使用安全计算后的值进行渲染，替换原本直接读取 current.label */}
-          <span className="text-text-mid">{displayLabel}</span>
-          <span className="text-text-lo">·</span>
+          <span className="text-text-hi font-medium">{displayLabel}</span>
+          <span className="text-text-lo">›</span>
           <span className="text-text-lo">{displayHint}</span>
         </div>
       </div>
@@ -53,7 +53,7 @@ export default function TopBar() {
       {/* ── center: command palette trigger (this is THE chrome hero element) ── */}
       <button
         onClick={() => setPaletteOpen(true)}
-        className="group flex items-center gap-2 h-7 px-3 rounded-soft border border-edge bg-white hover:border-[#b0b0b0] transition"
+        className="group flex items-center gap-2 h-7 px-3 rounded-soft border border-edge bg-white hover:border-[rgb(var(--pt-accent)/0.55)] hover:shadow-[0_1px_4px_rgba(0,0,0,0.07)] transition-all"
         style={{ minWidth: 360 }}
       >
         <Command size={12} className="text-text-mid" />

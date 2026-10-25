@@ -43,7 +43,7 @@ export const Diary: React.FC = () => {
 
   return (
     <div className="p-6 space-y-4 max-w-4xl">
-      <GlassPanel title="DIARY · 日记 / 总结" subtitle="One-Line a Day · 每天 +5 XP（智力）· 周/月自动汇总" />
+      <GlassPanel title="DIARY · 日记 / 总结" />
 
       {/* today */}
       <div className="border border-accent/40 bg-surface p-4">

@@ -59,7 +59,7 @@ export const Institute: React.FC = () => {
 
   return (
     <div className="p-6 space-y-4">
-      <GlassPanel title="INSTITUTE · 「学院」" subtitle="个人远期梦想的组织化：部门 · 行动 · 阶段 · 完成行动奖励 XP" />
+      <GlassPanel title="INSTITUTE · 「学院」" />
 
       {/* departments */}
       <div>

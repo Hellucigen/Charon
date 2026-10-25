@@ -37,7 +37,7 @@ export const Settings: React.FC = () => {
     <div className="p-6 space-y-4 max-w-3xl">
       <GlassPanel
         title="SETTINGS · 设置"
-        subtitle="个人终端的全局配置 · 数据存于 ~/.personal-terminal/config.json"
+
         meta={<span className="pt-mono text-xs text-text-lo">v0.1.0</span>}
       />
 

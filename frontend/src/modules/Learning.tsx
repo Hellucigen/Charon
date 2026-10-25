@@ -70,7 +70,7 @@ export const Learning: React.FC = () => {
 
   return (
     <div className="p-6 space-y-4">
-      <GlassPanel title="LEARNING · 学习" subtitle="SM-2 间隔重复 · 复习奖励 XP · JSON/CSV 导入" />
+      <GlassPanel title="LEARNING · 学习" />
 
       {/* review mode */}
       {reviewing && cards[idx] ? (

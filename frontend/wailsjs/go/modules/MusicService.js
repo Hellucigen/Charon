@@ -10,6 +10,22 @@ export function DeletePodcast(arg1) {
   return window['go']['modules']['MusicService']['DeletePodcast'](arg1);
 }
 
+export function NeteasePlaylist(arg1) {
+  return window['go']['modules']['MusicService']['NeteasePlaylist'](arg1);
+}
+
+export function NeteaseSearch(arg1) {
+  return window['go']['modules']['MusicService']['NeteaseSearch'](arg1);
+}
+
+export function NeteaseSongURL(arg1) {
+  return window['go']['modules']['MusicService']['NeteaseSongURL'](arg1);
+}
+
+export function NeteaseUserPlaylists(arg1) {
+  return window['go']['modules']['MusicService']['NeteaseUserPlaylists'](arg1);
+}
+
 export function Play(arg1, arg2) {
   return window['go']['modules']['MusicService']['Play'](arg1, arg2);
 }

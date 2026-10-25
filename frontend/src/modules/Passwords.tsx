@@ -72,7 +72,7 @@ export const Passwords: React.FC = () => {
   if (!st.created || !st.unlocked) {
     return (
       <div className="p-6 max-w-md mx-auto mt-16">
-        <GlassPanel title="VAULT · 密码库" subtitle={st.created ? '输入主密码解锁' : '首次使用 · 设置主密码'} scanline>
+        <GlassPanel title="VAULT · 密码库" subtitle={st.created ? '输入主密码解锁' : '首次使用'} scanline>
           <div className="mt-4 space-y-3">
             <input type="password" className="pt-input w-full pt-mono text-sm" placeholder="主密码"
               value={master} onChange={e => setMaster(e.target.value)} autoFocus />
@@ -98,7 +98,7 @@ export const Passwords: React.FC = () => {
     <div className="p-6 space-y-4 max-w-5xl">
       <GlassPanel
         title="VAULT · 密码库"
-        subtitle={`AES-256-GCM · ${st.entries} 条 · 复制后 30 秒自动清空剪贴板`}
+        subtitle={`${st.entries} 条`}
         meta={<span className="pt-chip text-accent border-accent pt-mono">UNLOCKED</span>}
         actions={<button className="pt-btn pt-btn-ghost" onClick={doLock}><Lock size={13} /> 锁定</button>}
       />

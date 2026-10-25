@@ -12,27 +12,27 @@
 ───────────────────────────────────────────────────────────────────── */
 
 :root {
-  /* ── Light industrial surfaces ────────────────────────────────── */
-  --pt-bg:        244 244 244;     /* #f4f4f4 page canvas (grid texture) */
-  --pt-surface:   250 250 250;     /* #fafafa module card face */
-  --pt-surface-2: 240 240 240;     /* #f0f0f0 nested panel */
-  --pt-surface-3: 232 232 232;     /* #e8e8e8 hover */
-  --pt-elevated:  255 255 255;     /* command palette, modals */
+  /* ── Dark night surfaces（2026-10-25 全局夜话化：Haru 页配色统一全端）── */
+  --pt-bg:        21 26 46;        /* #151a2e page canvas (night) */
+  --pt-surface:   32 38 60;        /* #20263c module card face */
+  --pt-surface-2: 40 46 70;        /* #282e46 nested panel */
+  --pt-surface-3: 52 58 84;        /* #343a54 hover */
+  --pt-elevated:  28 33 52;        /* command palette, modals */
 
-  /* ── Hairline edges (dark strokes on light) ───────────────────── */
-  --pt-edge:       0 0 0;
-  --pt-edge-a:     0.16;           /* ≈ #d0d0d0 on #fafafa */
-  --pt-edge-hot-a: 0.34;           /* ≈ #a8a8a8 */
+  /* ── Hairline edges (light strokes on dark) ───────────────────── */
+  --pt-edge:       255 255 255;
+  --pt-edge-a:     0.14;           /* subtle on dark */
+  --pt-edge-hot-a: 0.38;
 
-  /* ── Text ─────────────────────────────────────────────────────── */
-  --pt-text-hi:  26 26 26;         /* #1a1a1a */
-  --pt-text-mid: 58 58 58;         /* #3a3a3a */
-  --pt-text-lo:  136 136 136;      /* #888888 */
+  /* ── Text（暖白，与夜色协调）───────────────────────────────────── */
+  --pt-text-hi:  236 229 216;      /* #ece5d8 */
+  --pt-text-mid: 200 196 184;      /* #c8c4b8 */
+  --pt-text-lo:  130 128 120;      /* #828078 */
 
   /* ── Dual accent: orange primary / teal secondary ─────────────── */
-  --pt-accent:      255 107 0;     /* #ff6b00 action / user / high-activation */
-  --pt-accent-dim:  229 93 0;      /* #e55d00 readable on light */
-  --pt-accent-glow: 255 107 0;
+  --pt-accent:      232 183 120;   /* #e8b778 琥珀：action / user / 高激活 */
+  --pt-accent-dim:  214 168 110;   /* #d6a86e readable on dark */
+  --pt-accent-glow: 232 183 120;
   --pt-teal:        0 210 211;     /* #00d2d3 focus / system */
   --pt-teal-dim:    0 154 155;     /* #009a9b teal as text on light */
 

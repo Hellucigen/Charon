@@ -48,7 +48,7 @@ export const Data: React.FC = () => {
     <div className="p-6 space-y-4">
       <GlassPanel
         title="DATA · 个人数据中心"
-        subtitle="跨模块仪表盘 · 活动热力图 · 年度回顾 · 全量导出"
+
         actions={
           <button className="pt-btn pt-btn-ghost" onClick={exportAll}><Download size={13} /> EXPORT JSON</button>
         }

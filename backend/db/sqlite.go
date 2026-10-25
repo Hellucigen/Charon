@@ -19,11 +19,25 @@ func Open(path string) (*Store, error) {
 	if err := ensureDir(filepath.Dir(path)); err != nil {
 		return nil, err
 	}
-	dsn := fmt.Sprintf("file:%s?_journal=WAL&_fk=1&cache=shared", path)
+	// Serialize the pool through a single connection: SQLite wants one
+	// writer, and with `cache=shared` an unbounded database/sql pool can
+	// hand a second concurrent connection a read-only shared-cache handle.
+	// (Not the bug that broke writes here — that was a stale `db_path` in
+	// config.json pointing at another user's profile — but this is the
+	// correct hardening regardless, and busy_timeout covers the only real
+	// contention left: out-of-process readers like the companion.)
+	// NOTE: we deliberately do NOT force WAL — converting a live
+	// delete-mode DB to WAL needs an exclusive lock at open and fails
+	// startup under any concurrent reader. Rollback journal + single
+	// connection is the robust configuration for this GUI app.
+	dsn := fmt.Sprintf("file:%s?_pragma=busy_timeout(5000)&_fk=1", path)
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, err
 	}
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+	db.SetConnMaxLifetime(0)
 	if err := db.Ping(); err != nil {
 		return nil, err
 	}
@@ -336,5 +350,67 @@ var migrations = []string{
 		last_fetch INTEGER,
 		episodes   TEXT NOT NULL DEFAULT '[]',
 		created_at INTEGER NOT NULL
+	);`,
+	// 18 — academic: courses + assignments
+	`CREATE TABLE IF NOT EXISTS academic_courses (
+		id       TEXT PRIMARY KEY,
+		name     TEXT NOT NULL,
+		teacher  TEXT NOT NULL DEFAULT '',
+		location TEXT NOT NULL DEFAULT '',
+		day      INTEGER NOT NULL DEFAULT 1, -- 0=Sun..6=Sat
+		start    TEXT NOT NULL DEFAULT '',
+		end      TEXT NOT NULL DEFAULT '',
+		credits  REAL NOT NULL DEFAULT 0,
+		score    REAL NOT NULL DEFAULT -1  -- -1 = not graded
+	);
+	CREATE TABLE IF NOT EXISTS academic_assignments (
+		id         TEXT PRIMARY KEY,
+		course_id  TEXT NOT NULL DEFAULT '',
+		title      TEXT NOT NULL,
+		due_at     INTEGER,
+		done       INTEGER NOT NULL DEFAULT 0,
+		priority   TEXT NOT NULL DEFAULT '',
+		notes      TEXT NOT NULL DEFAULT '',
+		created_at INTEGER NOT NULL
+	);
+	CREATE INDEX IF NOT EXISTS idx_assignments_due ON academic_assignments(done, due_at);`,
+	// 19 — user-added game patterns for GameSessions
+	`CREATE TABLE IF NOT EXISTS game_marks (
+		id      TEXT PRIMARY KEY,
+		pattern TEXT NOT NULL
+	);`,
+	// 20 — papers reading queue
+	`CREATE TABLE IF NOT EXISTS papers (
+		id          TEXT PRIMARY KEY,
+		title       TEXT NOT NULL,
+		authors     TEXT NOT NULL DEFAULT '',
+		venue       TEXT NOT NULL DEFAULT '',
+		year        INTEGER NOT NULL DEFAULT 0,
+		pdf_path    TEXT NOT NULL DEFAULT '',
+		status      TEXT NOT NULL DEFAULT 'todo', -- todo/reading/done/cited
+		rating      INTEGER NOT NULL DEFAULT 0,
+		tags        TEXT NOT NULL DEFAULT '',
+		notes       TEXT NOT NULL DEFAULT '',
+		created_at  INTEGER NOT NULL,
+		finished_at INTEGER NOT NULL DEFAULT 0
+	);
+	CREATE INDEX IF NOT EXISTS idx_papers_status ON papers(status);`,
+	// 21 — Edge browser history archive (local, incremental)
+	`CREATE TABLE IF NOT EXISTS edge_history (
+		id          TEXT PRIMARY KEY,
+		url         TEXT NOT NULL,
+		title       TEXT NOT NULL DEFAULT '',
+		visit_at    INTEGER NOT NULL,          -- unix seconds
+		day         TEXT NOT NULL,             -- YYYY-MM-DD
+		profile     TEXT NOT NULL,
+		duration_ms INTEGER NOT NULL DEFAULT 0,
+		created_at  INTEGER NOT NULL
+	);
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_edge_history_uniq ON edge_history(url, visit_at, profile);
+	CREATE INDEX IF NOT EXISTS idx_edge_history_time ON edge_history(visit_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_edge_history_day ON edge_history(day);
+	CREATE TABLE IF NOT EXISTS edge_history_meta (
+		key   TEXT PRIMARY KEY,
+		value INTEGER NOT NULL
 	);`,
 }

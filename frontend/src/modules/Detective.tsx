@@ -102,7 +102,7 @@ export const Detective: React.FC = () => {
     <div className="p-6 space-y-4">
       <GlassPanel
         title="DETECTIVE BOARD · 侦探线索板"
-        subtitle={`${nodes.length} 节点 · ${edges.length} 红绳 · 拖拽移动 · 连线模式画关系`}
+        subtitle={`${nodes.length} 节点 · ${edges.length} 红绳`}
         actions={
           <div className="flex items-center gap-2">
             <button className="pt-btn pt-btn-ghost" onClick={exportBoard}><Download size={13} /> EXPORT</button>

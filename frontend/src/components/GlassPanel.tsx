@@ -13,7 +13,7 @@ interface Props {
   scanline?: boolean;           // retired with the dark theme (accepted, ignored)
   variant?: "default" | "elevated";
   className?: string;
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 export default function GlassPanel({
@@ -30,7 +30,6 @@ export default function GlassPanel({
     >
       {(title || subtitle || actions || meta) && (
         <header className="pt-module-header">
-          <span className="pt-dot live shrink-0" />
           {title && <h2 className="pt-h2 truncate">{title}</h2>}
           {subtitle && (
             <span className="font-normal normal-case tracking-normal text-[11px] text-text-mid truncate ml-1">
@@ -43,7 +42,7 @@ export default function GlassPanel({
           </div>
         </header>
       )}
-      <div className="flex-1 overflow-auto">{children}</div>
+      {children != null && <div className="flex-1 overflow-auto">{children}</div>}
     </section>
   );
 }

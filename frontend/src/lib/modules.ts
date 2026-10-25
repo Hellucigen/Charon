@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Cpu, FileText, Sparkles, ListTodo, Folder, Bookmark,
   KeyRound, Network, Map, Building2, GraduationCap, Music, Wallet,
   Activity, Palette, Cable, Timer, Trophy, BarChart3, BookHeart,
-  Puzzle, Settings,
+  Puzzle, Settings, FileArchive, CalendarDays, Gamepad2, BookOpen, Wrench, Heart,
 } from "lucide-react";
 import type { ModuleID } from "@/store/app";
 import type { LucideIcon } from "lucide-react";
@@ -23,12 +23,14 @@ export const MODULES: ModuleEntry[] = [
   // core
   { id: "dashboard", label: "Dashboard",  hint: "总览仪表盘",   icon: LayoutDashboard, group: "core", shortcut: "G D" },
   { id: "fascinator",label: "Fascinator", hint: "认知图谱启动器", icon: Cpu,            group: "core", shortcut: "G F" },
+  { id: "companion", label: "Haru", hint: "陪伴对话", icon: Heart, group: "core", shortcut: "G H" },
 
   // knowledge
   { id: "notes",     label: "Notes",      hint: "块编辑器笔记",  icon: FileText,       group: "knowledge", shortcut: "G N" },
   { id: "fleeting",  label: "Fleeting",   hint: "零碎想法",      icon: Sparkles,       group: "knowledge", shortcut: "G S" },
   { id: "detective", label: "Detective",  hint: "侦探线索板",    icon: Network,        group: "knowledge" },
   { id: "travel",    label: "Travel Log", hint: "旅游日记",      icon: Map,            group: "knowledge" },
+  { id: "papers",    label: "Papers",     hint: "论文阅读队列",  icon: BookOpen,       group: "knowledge" },
   { id: "institute", label: "Institute",  hint: "「学院」构想",  icon: Building2,      group: "knowledge" },
 
   // ops
@@ -36,10 +38,12 @@ export const MODULES: ModuleEntry[] = [
   { id: "shortcuts", label: "Shortcuts",  hint: "快捷方式",      icon: Folder,         group: "ops" },
   { id: "bookmarks", label: "Bookmarks",  hint: "书签管理",      icon: Bookmark,       group: "ops" },
   { id: "passwords", label: "Vault",      hint: "密码管理器",    icon: KeyRound,       group: "ops" },
-  { id: "network",   label: "Net Tools",  hint: "网络工具箱",    icon: Cable,          group: "ops" },
+  { id: "toolkit",   label: "Toolkit",    hint: "工具箱 · Edge 归档", icon: Wrench,   group: "ops" },
 
   // life
   { id: "learning",  label: "Learning",   hint: "背单词 / 题库", icon: GraduationCap,  group: "life" },
+  { id: "academic",  label: "Academic",   hint: "课程 / 作业 / GPA", icon: CalendarDays, group: "life" },
+  { id: "games",     label: "Games",      hint: "游戏时长统计",  icon: Gamepad2,       group: "life" },
   { id: "music",     label: "Music",      hint: "音乐 · 播客",   icon: Music,          group: "life" },
   { id: "finance",   label: "Finance",    hint: "财务管理",      icon: Wallet,         group: "life" },
   { id: "health",    label: "Health",     hint: "健康追踪",      icon: Activity,       group: "life" },
