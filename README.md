@@ -27,9 +27,10 @@
 
 ## 💜 Haru · 陪伴模块（新）
 
-视觉小说式陪伴界面，与 [Fascinator 认知引擎](https://github.com/Hellucigen/Fascinator) 实时联动：
+Haru 的房间——与她的 [认知引擎](https://github.com/Hellucigen/Fascinator) 实时联动：
 她的回复与主动话语（fas.utterance 事件）、真实活动状态铭牌、认知观察抽屉
 （当前意图/活跃概念/活动账本——全部来自运行中的 FAS，不伪造状态）。
+Haru 的居所：她的对话区、气泡、状态铭牌都住在这里。视觉小说式陪伴界面，
 全局夜话主题（夜空蓝紫 + 琥珀强调），工业仪表盘语言保留。
 
 ## 📋 项目简介
