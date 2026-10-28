@@ -53,7 +53,10 @@ export const Companion: React.FC = () => {
     seenRef.current.add(key)
     if (seenRef.current.size > 40) {
       const it = seenRef.current.values()
-      for (let i = 0; i < 20; i++) seenRef.current.delete(it.next().value)
+      for (let i = 0; i < 20; i++) {
+        const v = it.next().value
+        if (v !== undefined) seenRef.current.delete(v)
+      }
     }
     setLines(ls => [...ls, { who, text, cls }].slice(-120))
   }, [])

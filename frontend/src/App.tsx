@@ -6,6 +6,7 @@ import FleetingDrawer from '@/components/FleetingDrawer'
 import { useApp } from '@/store/app'
 import Dashboard from '@/modules/Dashboard'
 import { PluginPanel } from '@/components/PluginPanel'
+import { DesktopApproval } from '@/components/DesktopApproval'
 import { EventsOn } from './wailsjs/runtime/runtime'
 import { List, IsEnabled } from './wailsjs/go/modules/PluginsService'
 
@@ -235,6 +236,8 @@ export default function App() {
             </div>
           ))}
         </div>
+        {/* Haru 请求操作电脑时的人工批准卡（桌面控制关时无待批→自动隐形） */}
+        <DesktopApproval />
       </div>
   )
 }
